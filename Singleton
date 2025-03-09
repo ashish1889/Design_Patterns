@@ -1,0 +1,294 @@
+Need of Singleton-
+Class to have only one instance.
+To manage underlying resource- PrintSpooler, DatabaseConnection,App configuration.
+===================================================================================================================================================
+Singleton.h-
+#pragma once
+class Singleton
+{ //instance and constructor in private scope
+	Singleton() =default ; // In Modern C++ its better to use 
+	static Singleton m_Instance ;
+public:
+	static Singleton & Instance() ;
+	void MethodA() ;
+	void MethodB() ;
+};
+
+Singleton.cpp-
+#include "Singleton.h"
+Singleton Singleton::m_Instance ;
+Singleton& Singleton::Instance() {
+	return m_Instance ;
+}
+
+void Singleton::MethodA() {
+}
+
+void Singleton::MethodB() {
+}
+
+main.cpp-
+#include "Singleton.h"
+#include <corecrt_math.h>
+
+int main() {
+	Singleton &s = Singleton::Instance() ;
+	s.MethodA() ;
+
+	//Singleton s2 ;//will give error
+}
+================================================================================================================================================================
+
+Logger class example-
+
+Logger.h-
+
+#pragma once
+#define _CRT_SECURE_NO_WARNINGS //Macro to turn off compiler errors
+#include <cstdio>
+#include <string>
+
+class Logger
+{
+	FILE *m_pStream ;
+	std::string m_Tag ;
+	Logger() ;
+	static Logger m_Instance ;
+public:
+	Logger(const Logger&) = delete ;// Refer Problem 1
+	Logger & operator =(const Logger &) =delete ;
+	static Logger & Instance() ;
+	~Logger() ;
+	void WriteLog(const char *pMessage) ;
+	void SetTag(const char *pTag) ;
+};
+
+Logger.cpp-
+
+#include "Logger.h"
+Logger Logger::m_Instance ;//static instance initialization - Eager instantiation.
+Logger::Logger() {
+	m_pStream = fopen("applog.txt", "w") ;
+}
+
+Logger& Logger::Instance() {
+	return m_Instance ;
+}
+
+Logger::~Logger() {
+	fclose(m_pStream) ;
+}
+
+void Logger::WriteLog(const char* pMessage) {
+	fprintf(m_pStream, "[%s] %s\n", m_Tag.c_str(), pMessage) ;
+	fflush(m_pStream) ;//in case application crashes then buffer will not be flushed so to flush the buffer after every fprintf call.
+}
+
+void Logger::SetTag(const char* pTag) {
+	m_Tag = pTag ;
+}
+
+main.cpp-
+
+#include "Logger.h"
+void OpenConnection() {
+	Logger &lg = Logger::Instance() ;
+	lg.WriteLog("Attempting to open a connection") ;
+}
+int main() {
+	Logger &lg = Logger::Instance() ;
+	lg.SetTag("192.168.1.101") ;
+	lg.WriteLog("Application has started") ;
+	OpenConnection() ;
+	lg.WriteLog("Application is shutting down") ;
+}
+
+
+Problem 1- Here problem associated is that if user doesnot use reference then if copy constructor is not deleted it will cause shallow copy and instance 
+which is returned is reference is copied in value and as one scope goes out the address will be deleted leaving other dangling causing crash at runtime.
+
+The above program is of eager instantiation as the instance is created before the main fucntion is executed. m_pStream is also created
+
+
+=============================================================================================================================================
+
+LazySingleton-
+
+Logger.h-
+
+#pragma once
+#define _CRT_SECURE_NO_WARNINGS
+#include <cstdio>
+#include <string>
+#include <mutex>
+
+class Logger
+{
+	FILE *m_pStream ;
+	std::string m_Tag ;
+	Logger() ;
+	static Logger *m_pInstance ;//For Lazy instantiation need pointer variable
+	static std::mutex m_Mtx ;
+	~Logger() ;
+public:
+	Logger(const Logger&) = delete ;
+	Logger & operator =(const Logger &) =delete ;
+	static Logger & Instance() ;
+	void WriteLog(const char *pMessage) ;
+	void SetTag(const char *pTag) ;
+};
+
+
+Logger.cpp-
+
+#include "Logger.h"
+#include <iostream>
+Logger *Logger::m_pInstance ;
+std::mutex Logger::m_Mtx ;
+Logger::Logger() {
+	std::cout << __FUNCSIG__ << std::endl; 
+	m_pStream = fopen("applog.txt", "w") ;
+	atexit([]() {
+		delete m_pInstance ;
+	}) ;
+}
+std::once_flag flag ;
+Logger& Logger::Instance() {
+	//Double-check locking pattern
+	//if (m_pInstance == nullptr) {
+	//	m_Mtx.lock();
+	//	if (m_pInstance == nullptr) {
+	//		//m_pInstance = new Logger{};
+	//		void *p=operator new (sizeof(Logger)) ;
+	//		m_pInstance = static_cast<Logger*>(p) ;
+	//		new(p)Logger{} ;
+	//	}
+	//	m_Mtx.unlock();
+	//}
+	//return *m_pInstance ; 
+
+	//Meyer's singleton 
+	/*static Logger instance ;
+	return instance ;*/
+
+	std::call_once(flag, [](int ) {
+		m_pInstance = new Logger{} ;
+	}, 5) ;
+	return *m_pInstance ;
+
+	//InitOnceExecuteOnce - Win32
+	//pthread_once - Linux (POSIX)
+}
+
+Logger::~Logger() {
+	std::cout << __FUNCSIG__ << std::endl; 
+	fclose(m_pStream) ;
+}
+
+void Logger::WriteLog(const char* pMessage) {
+	fprintf(m_pStream, "[%s] %s\n", m_Tag.c_str(), pMessage) ;
+	fflush(m_pStream) ;
+}
+
+void Logger::SetTag(const char* pTag) {
+	m_Tag = pTag ;
+}
+
+
+==================================================================================================================================================================
+
+Destruction Policies- Using Smart pointers and atexit function
+
+Logger.h-
+
+#pragma once
+#define _CRT_SECURE_NO_WARNINGS
+#include <cstdio>
+#include <string>
+#include <mutex>
+
+class Logger
+{
+	struct Deleter{  //Point 2
+		void operator()(Logger *p) {
+			delete p ;
+		}
+	};
+	FILE *m_pStream ;
+	std::string m_Tag ;
+	Logger() ;
+	static Logger *m_pInstance ;//Point 3
+	//inline static std::unique_ptr<Logger, Deleter> m_pInstance{} ; // inline allows to initialize in class itself - inline static used in C++ 17 -Point 1
+	~Logger() ;//Point 2
+public:
+	Logger(const Logger&) = delete ;
+	Logger & operator =(const Logger &) =delete ;
+	static Logger & Instance() ;
+	void WriteLog(const char *pMessage) ;
+	void SetTag(const char *pTag) ;
+};
+
+
+Logger.cpp-
+
+#include "Logger.h"
+#include <iostream>
+Logger *Logger::m_pInstance ;
+Logger::Logger() {
+	std::cout << __FUNCSIG__ << std::endl; 
+	m_pStream = fopen("applog.txt", "w") ;
+	atexit([]() { //Point 3
+		delete m_pInstance ;
+	}) ;
+}
+
+Logger& Logger::Instance() {
+	if(m_pInstance == nullptr)
+		m_pInstance = new Logger{} ;// This will be commented if we are following Point 1 approach
+		//m_pInstance.reset(new Logger{}) ;//Point 1
+	return *m_pInstance ;
+}
+
+Logger::~Logger() {
+	std::cout << __FUNCSIG__ << std::endl; 
+	fclose(m_pStream) ;
+}
+
+void Logger::WriteLog(const char* pMessage) {
+	fprintf(m_pStream, "[%s] %s\n", m_Tag.c_str(), pMessage) ;
+	fflush(m_pStream) ;
+}
+
+void Logger::SetTag(const char* pTag) {
+	m_Tag = pTag ;
+}
+
+
+main.cpp-
+
+#include "Logger.h"
+
+void OpenConnection() {
+	Logger &lg = Logger::Instance() ;
+	lg.WriteLog("Attempting to open a connection") ;
+}
+int main() {
+	Logger &lg = Logger::Instance() ;
+	lg.SetTag("192.168.1.101") ;
+	lg.WriteLog("Application has started") ;
+	OpenConnection() ;
+	lg.WriteLog("Application is shutting down") ;
+	//auto *p = &lg ;//Point 2
+	//delete p ;//Point 2
+}
+
+
+Point 1- Approach using Smart pointer i.e. - Unique pointer - Static member will automatically call Deleter
+Point 2- To avoid from user to accidentally delete the pointer- destructor is made private , as destructor is private
+         so unique_ptr will not be able to delete, so we have to define custom class Deleter for unique ptr.
+Point 3- Here we are using callback , as it returns from main - atexit will be called. atexit can access destructor as its a part of class only
+====================================================================================================================================================
+Static initialization fiasco- https://isocpp.org/wiki/faq/ctors#static-init-order
+
+
+
