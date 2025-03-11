@@ -7,7 +7,7 @@ Singleton.h-
 class Singleton
 { //instance and constructor in private scope
 	Singleton() =default ; // In Modern C++ its better to use 
-	static Singleton m_Instance ;
+	static Singleton m_Instance ;// goes in data segment
 public:
 	static Singleton & Instance() ;
 	void MethodA() ;
@@ -16,7 +16,7 @@ public:
 
 Singleton.cpp-
 #include "Singleton.h"
-Singleton Singleton::m_Instance ;
+Singleton Singleton::m_Instance ;//They must be declared inside the class but defined outside so that memory can be allocated for them.
 Singleton& Singleton::Instance() {
 	return m_Instance ;
 }
