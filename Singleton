@@ -438,4 +438,17 @@ int main() {
 	std::cout << Clock::GetTimeString() << std::endl ;
 }
 
+===============================================================================================================================
+
+Singleton                                                                             Monostate
+Enforces singular instances through structure               Enforces singular instance through behaviour
+Only one instance can exist                                 Class may or may not be instantiated
+Support lazy initialization                                 No support for lazy instantiation
+Requires static instance method                             All atributes are static(methods may be static)
+Can support inheritance & polymorphism                      Static methods cannot be overriden
+Existing classes can be made singleton                      Difficult to change existing classes to monostate
+Flexible                                                    Inflexible
+
+===================================================================================================================================
+
 
