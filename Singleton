@@ -289,6 +289,153 @@ Point 2- To avoid from user to accidentally delete the pointer- destructor is ma
 Point 3- Here we are using callback , as it returns from main - atexit will be called. atexit can access destructor as its a part of class only
 ====================================================================================================================================================
 Static initialization fiasco- https://isocpp.org/wiki/faq/ctors#static-init-order
+====================================================================================================================================
+Multithreading issues-
 
+In main.cpp-
+
+int main() {
+	std::thread t1{[]() {
+		Logger &lg = Logger::Instance() ;
+		lg.WriteLog("Thread 1 has started") ;
+	}} ;
+	std::thread t2{[]() {
+		Logger &lg = Logger::Instance() ;
+		lg.WriteLog("Thread 2 has started") ;
+	}} ;
+	t1.join() ;
+	t2.join() ;
+}
+
+Here problem will be constructor of logger class will be invoked twice and program freezes
+To avoid this we use DCLP- code in Lazy Singleton part
+====================================================================================================================================
+Failure of DCLP-
+
+
+Logger& Logger::Instance() {
+	//Double-check locking pattern
+	if (m_pInstance == nullptr) {
+		m_Mtx.lock();
+		if (m_pInstance == nullptr) {
+			//m_pInstance = new Logger{};
+			void *p=operator new (sizeof(Logger)) ;//Memory allocated-1
+			m_pInstance = static_cast<Logger*>(p) ;//Initialized-2
+			new(p)Logger{} ;//Memory address assigned-3
+		}
+		m_Mtx.unlock();
+	}
+	return *m_pInstance ; 
+}
+
+If in multithreaded application ordering changes- 1,3,2 and while operation on one thread pre-emption happens
+This can cause crash of program.
+
+To avoid DCLP problem- Meyer's Singleton is used in Lazy initialization
+Logger& Logger::Instance() {
+	//Double-check locking pattern
+	//if (m_pInstance == nullptr) {
+	//	m_Mtx.lock();
+	//	if (m_pInstance == nullptr) {
+	//		//m_pInstance = new Logger{};
+	//		void *p=operator new (sizeof(Logger)) ;
+	//		m_pInstance = static_cast<Logger*>(p) ;
+	//		new(p)Logger{} ;
+	//	}
+	//	m_Mtx.unlock();
+	//}
+	//return *m_pInstance ; 
+
+	//Meyer's singleton - created on stack- is thread safe from C++ 11
+	static Logger instance ;
+	return instance ;
+
+
+}
+
+=====================================================================================================================================
+Monostate -
+
+Clock.h-
+#pragma once
+#define _CRT_SECURE_NO_WARNINGS
+#include <string>
+//Monostate
+class Clock
+{       //inline static from C++17
+	inline static int m_Hour ;
+	inline static int m_Minute ;
+	inline static int m_Second ;
+	static void CurrentTime() ;
+	Clock() ;
+public:
+	static int GetHour() ;  
+	static int GetMinute() ;
+	static int GetSecond()  ;
+	static std::string GetTimeString() ;
+};
+/*
+ * c1 - h m s
+ * c2 - h m s
+ * c3 - h m s
+ *
+ * With static attributes
+ * c1\ 
+ * c2-h m s
+ * c3/ 
+ * 
+ * 
+ */
+
+Clock.cpp-
+
+#include "Clock.h"
+#include <ctime>
+#include <sstream>
+void Clock::CurrentTime() {
+	time_t raw_time ;
+	time(&raw_time) ;
+	tm *local_time = localtime(&raw_time) ;
+	m_Hour = local_time->tm_hour ;
+	m_Minute = local_time->tm_min ;
+	m_Second = local_time->tm_sec ;
+}
+
+Clock::Clock() {
+	CurrentTime() ;
+}
+
+int Clock::GetHour()  {
+	CurrentTime() ;
+	return m_Hour ;
+}
+
+int Clock::GetMinute()  {
+	CurrentTime() ;
+	return m_Minute ;
+}
+
+int Clock::GetSecond()  {
+	CurrentTime() ;
+	return m_Second ;
+}
+
+std::string Clock::GetTimeString()  {
+	CurrentTime() ;
+	std::ostringstream out ;
+	out << m_Hour <<":" << m_Minute << ":" << m_Second ;
+	return out.str() ;
+}
+
+
+main.cpp-
+
+#include "Clock.h"
+#include <iostream>
+
+int main() {
+	//Clock clk ;
+	std::cout << Clock::GetTimeString() << std::endl ;
+}
 
 
