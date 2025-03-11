@@ -1,0 +1,12 @@
+Creational                                                                Structural                                                    Behavioural
+ Singleton                                                                Adapter                                                       Chain of Responsibility
+ Prototype                                                                Bridge                                                        Command
+ Builder                                                                  Composite                                                     Interpreter
+ Factory-(Abstract Factory,Factory Method)                                Decorator                                                     Iteraror
+                                                                          Facade                                                        Momento
+                                                                          Flyweight                                                     Mediator
+                                                                          Proxy                                                         Observer
+                                                                                                                                        State
+                                                                                                                                        Strategy
+                                                                                                                                        Template Method
+                                                                                                                                        Visitor
