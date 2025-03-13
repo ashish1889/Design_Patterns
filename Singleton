@@ -1,6 +1,7 @@
 Need of Singleton-
 Class to have only one instance.
 To manage underlying resource- PrintSpooler, DatabaseConnection,App configuration.
+References can never be null
 ===================================================================================================================================================
 Singleton.h-
 #pragma once
