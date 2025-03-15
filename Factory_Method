@@ -1,0 +1,351 @@
+Factory method 
+- mostly used in all kind of applications
+- Popular with frwk and libraries as they have to create instances of User defined class and using this pattern they can create the instance without knowing name of the class
+- an alternative to new keyword
+- makes code loosely coupled.
+
+Intent of this pattern- Define an interface for creating an object, but let subclasses decide which class to instantiate.Factory methods lets class defer instantiation
+                        to subclasses
+
+Implementation-
+- Different ways to implement
+- An overridable method is provided that returns instance of a class
+- This method can be overridden to return instance of a subclass
+- Behaves like a constructor
+- However a constructor always returns the same instance, factory method can return the instance of any subtype
+- Also called virtual constructor
+
+===============================================================================================================================================================================
+
+Basic Implementation of Factory Method-
+
+Product.h-
+
+#pragma once
+class Product
+{
+public:
+	virtual void Operation() = 0 ;
+	virtual ~Product() = default ;
+};
+
+
+ConcreteProduct.h-
+
+#pragma once
+#include "Product.h"
+class ConcreteProduct :
+	public Product
+{
+
+public:
+	void Operation() override;
+};
+
+
+ConcreteProduct.cpp-
+
+#include "ConcreteProduct.h"
+#include <iostream>
+
+void ConcreteProduct::Operation() {
+	std::cout << __FUNCSIG__ << std::endl; 
+}
+
+
+
+ConcreteProduct2.h-
+
+#pragma once
+#include "Product.h"
+class ConcreteProduct2 :
+	public Product
+{
+
+public:
+	void Operation() override;
+};
+
+
+
+ConcreteProduct2.cpp-
+
+#include "ConcreteProduct2.h"
+#include <iostream>
+
+void ConcreteProduct2::Operation() {
+	std::cout << __FUNCSIG__ << std::endl; 
+}
+
+
+
+Creator.h-
+
+#pragma once
+class Product ;
+class Creator
+{
+	Product *m_pProduct ;
+public:
+	void AnOperation() ;
+	virtual Product * Create() {return nullptr;};
+};
+
+
+Creator.cpp-
+
+#include "Creator.h"
+#include "Product.h"
+//#include "ConcreteProduct.h"
+
+void Creator::AnOperation() {
+	//m_pProduct = new ConcreteProduct{} ;// This was making a tight coupling with concrete class
+	m_pProduct = Create() ;
+	m_pProduct->Operation() ;
+}
+
+
+ConcreteCreator.h-
+
+#pragma once
+#include "Creator.h"
+class ConcreteCreator :
+	public Creator
+{
+
+public:
+	Product* Create() override;
+};
+
+
+ConcreteCreator.cpp-
+
+#include "ConcreteCreator.h"
+#include "ConcreteProduct.h"
+
+Product* ConcreteCreator::Create() {
+	return new ConcreteProduct{} ;
+}
+
+
+ConcreteCreator2.h-
+
+#pragma once
+#include "Creator.h"
+class ConcreteCreator2 :
+	public Creator
+{
+
+public:
+	Product* Create() override;
+};
+
+
+ConcreteCreator2.cpp-
+
+#include "ConcreteCreator2.h"
+#include "ConcreteProduct2.h"
+
+Product* ConcreteCreator2::Create() {
+	return new ConcreteProduct2{} ;
+}
+
+
+Client code-
+
+#include "Creator.h"
+#include "ConcreteCreator.h"
+#include "ConcreteCreator2.h"
+
+int main() {
+	ConcreteCreator2 ct ;
+	ct.AnOperation() ;
+}
+
+
+Here on call of AnOperation() method from main() method using ConcreteCreator2 object will invoke ConcreteProduct2::Operation().
+
+======================================================================================================================================================================
+
+
+Application Framework example-
+
+All Document abstract and concrete classes-
+
+Document.h-
+
+#pragma once
+class Document
+{
+public: 
+	virtual void Write() = 0 ;
+	virtual void Read() = 0 ;
+	virtual ~Document() = default ;
+};
+
+
+TextDocument.h-
+
+#pragma once
+#include "Document.h"
+class TextDocument :
+	public Document
+{
+
+public:
+	void Write() override;
+	void Read() override;
+};
+
+
+TextDocument.cpp-
+
+#include "TextDocument.h"
+#include <iostream>
+
+void TextDocument::Write() {
+	std::cout << __FUNCSIG__ << std::endl; 
+}
+
+void TextDocument::Read() {
+	std::cout << __FUNCSIG__ << std::endl; 
+}
+
+
+SpreadsheetDocument.h-
+
+#pragma once
+#include "Document.h"
+class SpreadsheetDocument :
+	public Document
+{
+
+public:
+	void Write() override;
+	void Read() override;
+};
+
+
+SpreadsheetDocument.cpp-
+
+#include "SpreadsheetDocument.h"
+#include <iostream>
+
+void SpreadsheetDocument::Write() {
+	std::cout << __FUNCSIG__ << std::endl; 
+}
+
+void SpreadsheetDocument::Read() {
+	std::cout << __FUNCSIG__ << std::endl; 
+}
+
+
+All Application classes-
+
+
+Application.h-
+
+#pragma once
+#include <memory>
+#include "Document.h"
+using DocumentPtr = std::unique_ptr<Document> ;
+class Application
+{
+	DocumentPtr m_pDocument ;
+	//Document *m_pDocument ;
+public:
+	void New() ;
+	void Open() ;
+	void Save() ;
+	virtual DocumentPtr Create(){return nullptr ;}
+	
+};
+
+
+Application.cpp-
+
+#include "Application.h"
+#include "Document.h"
+
+void Application::New() {
+	m_pDocument = Create() ;
+}
+
+void Application::Open() {
+	m_pDocument = Create() ;
+	m_pDocument->Read() ;
+}
+
+void Application::Save() {
+	m_pDocument->Write() ;
+}
+
+
+SpreadSheetApplication.h-
+
+#pragma once
+#include "Application.h"
+class SpreadSheetApplication :
+	public Application
+{
+
+public:
+	DocumentPtr Create() override;
+};
+
+
+SpreadSheetApplication.cpp-
+
+#include "SpreadSheetApplication.h"
+#include "SpreadsheetDocument.h"
+
+DocumentPtr SpreadSheetApplication::Create() {
+	return std::make_unique<SpreadsheetDocument>() ;
+}
+
+
+TextApplication.h-
+
+#pragma once
+#include "Application.h"
+class TextApplication :
+	public Application
+{
+
+public:
+	DocumentPtr Create() override;
+};
+
+
+TextApplication.cpp-
+
+
+#include "TextApplication.h"
+#include "TextDocument.h"
+
+DocumentPtr TextApplication::Create() {
+	return std::make_unique<TextDocument>();
+}
+
+
+main.cpp-
+
+#include "Application.h"
+#include "TextApplication.h"
+#include "SpreadSheetApplication.h"
+
+int main() {
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF) ;// for checking memory leak
+	SpreadSheetApplication app ;
+	app.New() ;
+	app.Open() ;
+	app.Save() ;
+}
+
+Here SpreadsheetDocument::Read and SpreadsheetDocument::Write is called.
+
+
+
+
+
+
