@@ -183,7 +183,7 @@ Logger& Logger::Instance() {
 
 Logger::~Logger() {
 	std::cout << __FUNCSIG__ << std::endl; 
-	fclose(m_pStream) ;
+	fclose(m_pStream) ; //Here in destructor - closing file stream only.
 }
 
 void Logger::WriteLog(const char* pMessage) {
