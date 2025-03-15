@@ -54,7 +54,7 @@ class Logger
 	FILE *m_pStream ;
 	std::string m_Tag ;
 	Logger() ;
-	static Logger m_Instance ;
+	static Logger m_Instance ; //Instance of logger is created and file stream is opened.
 public:
 	Logger(const Logger&) = delete ;// Refer Problem 1
 	Logger & operator =(const Logger &) =delete ;
