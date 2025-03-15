@@ -182,6 +182,8 @@ Logger& Logger::Instance() {
 }
 
 //Here even if destructor is not called- Application will flush the file buffer and closes the file handles.
+//If destructor is setting an event or releasing a semaphore and other applications are waiting on these objects
+//In these particular cases if destructor is not invoked these particular objects will not be released.
 Logger::~Logger() {
 	std::cout << __FUNCSIG__ << std::endl; 
 	fclose(m_pStream) ; //Here in destructor - closing file stream only.
