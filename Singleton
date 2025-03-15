@@ -213,7 +213,7 @@ Logger.h-
 
 class Logger
 {
-	struct Deleter{  //Point 2
+	struct Deleter{  //Point 2 and Point 4
 		void operator()(Logger *p) {
 			delete p ;
 		}
@@ -290,7 +290,17 @@ int main() {
 Point 1- Approach using Smart pointer i.e. - Unique pointer - Static member will automatically call Deleter
 Point 2- To avoid from user to accidentally delete the pointer- destructor is made private , as destructor is private
          so unique_ptr will not be able to delete, so we have to define custom class Deleter for unique ptr.
-Point 3- Here we are using callback , as it returns from main - atexit will be called. atexit can access destructor as its a part of class only
+Point 3- Here we are using callback , as it returns from main - atexit will be called. atexit can access destructor as 
+         its a part of class only
+Point 4- Here instead of struct if we use class then there will be access issue even within class as by default access specifier
+         is private.
+        class Deleter{  
+                public:
+		void operator()(Logger *p) {
+			delete p ;
+		}
+	};
+        If nested class is defined the operator overloading should be in public access specifier.
 ====================================================================================================================================================
 Static initialization fiasco- https://isocpp.org/wiki/faq/ctors#static-init-order
 ====================================================================================================================================
