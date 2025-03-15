@@ -181,6 +181,7 @@ Logger& Logger::Instance() {
 	//pthread_once - Linux (POSIX)
 }
 
+//Here even if destructor is not called- Application will flush the file buffer and closes the file handles.
 Logger::~Logger() {
 	std::cout << __FUNCSIG__ << std::endl; 
 	fclose(m_pStream) ; //Here in destructor - closing file stream only.
