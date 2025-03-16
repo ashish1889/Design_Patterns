@@ -344,6 +344,177 @@ int main() {
 
 Here SpreadsheetDocument::Read and SpreadsheetDocument::Write is called.
 
+======================================================================================================================================
+
+Parameterized Factory-
+
+All Document classes-
+
+Document.h-
+
+#pragma once
+#include <memory>
+
+class Document
+{
+public:
+	virtual void Write() = 0 ;
+	virtual void Read() = 0 ;
+	virtual ~Document() = default ;
+};
+using DocumentPtr = std::unique_ptr<Document> ;
+
+
+
+TextDocument.h-
+
+#pragma once
+#include "Document.h"
+class TextDocument :
+	public Document
+{
+
+public:
+	void Write() override;
+	void Read() override;
+};
+
+
+TextDocument.cpp-
+
+#include "TextDocument.h"
+#include <iostream>
+
+void TextDocument::Write() {
+	std::cout << __FUNCSIG__ << std::endl; 
+}
+
+void TextDocument::Read() {
+	std::cout << __FUNCSIG__ << std::endl; 
+}
+
+
+SpreadsheetDocument.h-
+
+#pragma once
+#include "Document.h"
+class SpreadsheetDocument :
+	public Document
+{
+
+public:
+	void Write() override;
+	void Read() override;
+};
+
+
+SpreadsheetDocument.cpp-
+
+
+#include "SpreadsheetDocument.h"
+#include <iostream>
+
+void SpreadsheetDocument::Write() {
+	std::cout << __FUNCSIG__ << std::endl; 
+}
+
+void SpreadsheetDocument::Read() {
+	std::cout << __FUNCSIG__ << std::endl; 
+}
+
+
+Application class and DocumentFactory class-
+
+Application.h-
+
+#pragma once
+#include <memory>
+#include "Document.h"
+class Application
+{
+	DocumentPtr m_pDocument ;
+	//Document *m_pDocument ;
+public:
+	void New() ;
+	void Open() ;
+	void Save() ;
+};
+
+
+Application.cpp-
+
+#include "Application.h"
+#include "DocumentFactory.h"
+
+void Application::New() {
+	
+	m_pDocument = DocumentFactory::Create("text");//This can be selected by giving options also
+}
+
+void Application::Open() {
+	DocumentFactory factory ;
+	m_pDocument = DocumentFactory::Create("text");
+	m_pDocument->Read() ;
+}
+
+void Application::Save() {
+	m_pDocument->Write() ;
+}
+
+
+
+DocumentFactory.h-
+
+#pragma once
+#include <string>
+#include "Document.h"
+class DocumentFactory
+{
+public:
+	static DocumentPtr Create(const std::string &type) ;//Made it Monostate
+};
+
+
+DocumentFactory.cpp-
+
+//Here for addition of new types of documents we need just to add new type in if-else 
+//condition in below code or make Create method virtual and override  in new class inherited from DocumentFactory 
+
+#include "DocumentFactory.h"
+#include "TextDocument.h"
+#include "SpreadsheetDocument.h"
+
+DocumentPtr DocumentFactory::Create(const std::string& type) {
+	if(type == "text")
+		return std::make_unique<TextDocument>() ;
+	else if(type == "spreadsheet")
+		return std::make_unique<SpreadsheetDocument>() ;
+	return nullptr ;
+}
+
+
+main.cpp-
+
+#include "Application.h"
+
+int main() {
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF) ;// for checking memory leak
+	Application app ;
+	app.New() ;
+	app.Open() ;
+	app.Save() ;
+}
+
+
+=====================================================================================================================================
+
+
+
+
+
+
+
+
 
 
 
