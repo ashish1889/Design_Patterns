@@ -507,6 +507,27 @@ int main() {
 
 
 =====================================================================================================================================
+ObjectPool design pattern-
+
+Implementataion-
+- ObjectPool maintains an array or a list of SharedObject instances
+- SharedObject instances are not created by client, instead they use object pools
+- Objects are constructed when-
+                           - program starts
+                           - pool is empty
+                           - an existing shared object is not available
+- For last case the pool can grow automatically
+- ObjectPool can be implemented as Singleton or Monostate
+- Clients acquire a SharedObject instance by invoking a factory method in the pool.
+- When client gets a SharedObject instance it is either removed from the ObjectPool or marked as used.
+- Client may manually return a SharedObbject to ObjectPoolor it may be done automatically.
+- This instance can be reused again
+- Pooled object instance can be reset
+        -before giving it to the client
+        -after it is returned to the pool
+- ObjectPool is responsible for deleting the pooled instances
+- Instances usually deleted at the end of program
+- To avoid tight coupling with concrete pooled objects,ObjectPool can use a factory to instantiate the.
 
 
 
