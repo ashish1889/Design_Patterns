@@ -1,0 +1,312 @@
+Basic Object pool example-
+
+
+ObjectPool.h- 
+
+#pragma once
+#include <vector>
+class SharedObject;
+
+class ObjectPool
+{
+	ObjectPool() = default ;
+  //ObjectPool holds pointers of SharedOjects 
+	inline static std::vector<SharedObject*> m_PooledObjects{} ;
+public:
+	static SharedObject * AcquireObject() ;
+	static void ReleaseObject(SharedObject *pSO) ;
+};
+
+
+ObjectPool.cpp-
+//Implemented as Monostate
+#include "ObjectPool.h"
+
+#include <iostream>
+
+#include "SharedObject.h"
+SharedObject* ObjectPool::AcquireObject() {
+	for(auto & so : m_PooledObjects) {
+		if(!so->IsUsed()) {
+			std::cout << "[POOL] Returning an existing object\n" ;
+			so->SetUsedState(true) ;
+			so->Reset() ;
+			return so ;
+		}
+	}
+	std::cout << "[POOL] Creating a new object\n" ;
+	SharedObject *so = new SharedObject{} ;
+	m_PooledObjects.push_back(so) ;
+	return so ;
+}
+
+void ObjectPool::ReleaseObject(SharedObject* pSO) {
+	for(auto &so : m_PooledObjects) {
+		if(so == pSO) {
+			so->SetUsedState(false) ;
+			//Optionally reset the state
+		}
+	}
+}
+
+SharedObject.h-
+
+#pragma once
+class SharedObject
+{
+	bool m_IsUsed{true} ;//Boolean used to specify the state of use of object
+public:
+	bool IsUsed()const{return m_IsUsed ;}
+	void SetUsedState(bool used) {
+		m_IsUsed = used ;
+	}
+	void MethodA() ;
+	void MethodB() ;
+	void Reset() ;
+};
+
+
+SharedObject.cpp- 
+
+#include "SharedObject.h"
+
+#include <iostream>
+
+void SharedObject::MethodA() {
+	std::cout << "MethodA\n" ;
+}
+
+void SharedObject::MethodB() {
+	std::cout << "MethodB\n" ;
+}
+
+void SharedObject::Reset() {
+	std::cout << "Resetting the state\n" ;
+}
+
+
+main.cpp -
+
+#include "ObjectPool.h"
+#include "SharedObject.h"
+int main() {
+  //here new object will be created and acquired
+	auto s1 = ObjectPool::AcquireObject() ;
+	s1->MethodA() ;
+	s1->MethodB() ;
+
+  //here new object will be created and acquired
+	auto s2 = ObjectPool::AcquireObject() ;
+	s2->MethodA() ;
+	s2->MethodB() ;
+
+  //here one object will be released
+	ObjectPool::ReleaseObject(s1) ;
+
+  //here the object acquired will be the one which is already released in pool object.
+	auto s3 = ObjectPool::AcquireObject() ;
+	s3->MethodA() ;
+	s3->MethodB() ;
+}
+===================================================================================================================================================================================
+
+A missile game without using missile pool- This results in repetitive construction and destruction of the objects.
+
+Missile.h-
+
+#pragma once
+class Missile
+{
+	bool m_IsVisible{true} ;
+public:
+	void SetVisible(bool visible) ;
+	bool IsVisible()const ;
+	Missile() ;
+	~Missile();
+	void Update() ;
+};
+
+
+Missile.cpp-
+
+#include "Missile.h"
+
+#include <iostream>
+
+void Missile::SetVisible(bool visible) {
+	m_IsVisible = visible ;
+}
+
+bool Missile::IsVisible() const {
+	return m_IsVisible ;
+}
+
+Missile::Missile() {
+	std::cout << "++++ Missile Created\n" ;
+}
+
+Missile::~Missile() {
+	std::cout << "~~~~ Missile Destroyed\n" ;
+}
+
+void Missile::Update() {
+	std::cout << "-> " ;
+}
+
+main.cpp-
+
+#include <iostream>
+#include <thread>
+#include <vector>
+
+
+#include "Missile.h"
+std::vector<std::shared_ptr<Missile>> missiles{} ;
+
+void Fire() {
+	missiles.push_back(std::make_shared<Missile>()) ;
+	missiles.push_back(std::make_shared<Missile>()) ;
+}
+void Animate() {
+	for(auto &m : missiles) {
+		m->Update() ;
+	}
+}
+
+void Explode() {
+	using namespace std ;
+	std::cout << "X\n" ;
+	for(auto &m : missiles) {
+		m->SetVisible(false) ;
+	}
+	missiles.clear() ;
+	std::this_thread::sleep_for(1s) ;
+	std::cout << "\n\n" ;
+}
+void GameLoop() {
+	using namespace std ;
+	int counter{} ;
+	while(true) {
+		++counter ;
+		if(counter == 1) {
+			Fire() ;
+		}
+		if(counter >=1 && counter <= 5) {
+			Animate() ;
+		}
+		if(counter > 5) {
+			Explode() ; 
+			counter = 0 ;
+		} 
+		std::this_thread::sleep_for(1s) ;
+	}
+}
+
+int main() {
+	GameLoop() ;
+}
+
+For improvement over repeated construction and destruction of objects- MissilePool is introduced
+
+Missile.h and Missile.cpp remains same as earlier.
+
+MissilePool.h-
+
+#pragma once
+#include <memory>
+#include <vector>
+#include "Missile.h"
+using MissilePtr = std::shared_ptr<Missile> ;
+class MissilePool
+{
+	inline static std::vector<MissilePtr> m_Missiles{} ;
+	MissilePool() = default ;
+public:
+	static MissilePtr AcquireMissile() ;
+	static void ReleaseMissile(const MissilePtr & missile) ;
+};
+
+
+MissilePool.cpp-
+
+#include "MissilePool.h"
+
+#include <iostream>
+
+MissilePtr MissilePool::AcquireMissile() {
+	for(auto &missile : m_Missiles) {
+		if(!missile->IsVisible()) {
+			missile->SetVisible(true) ;
+			std::cout << "[POOL] Returning an existing instance\n" ;
+			return missile ;
+		}
+	}
+	std::cout << "[POOL] Creating a new instance\n" ;
+	auto missile = std::make_shared<Missile>() ;
+	m_Missiles.push_back(missile) ;
+	return missile ;
+}
+
+void MissilePool::ReleaseMissile(const MissilePtr& missile) {
+	for(auto &m:m_Missiles) {
+		if(m == missile) {
+			m->SetVisible(false) ;//visiblity set false only, no destruction happened. So object can be reused from th pool
+		}
+	}
+}
+
+
+main.cpp-
+
+#include <iostream>
+#include <thread>
+#include <vector>
+
+
+#include "Missile.h"
+#include "MissilePool.h"
+std::vector<std::shared_ptr<Missile>> missiles{} ;
+
+void Fire() {
+	missiles.push_back(MissilePool::AcquireMissile()) ;
+	missiles.push_back(MissilePool::AcquireMissile()) ;
+}
+void Animate() {
+	for(auto &m : missiles) {
+		m->Update() ;
+	}
+}
+
+void Explode() {
+	using namespace std ;
+	std::cout << "X\n" ;
+	for(auto &m : missiles) {
+		m->SetVisible(false) ;
+	}
+	missiles.clear() ;
+	std::this_thread::sleep_for(1s) ;
+	std::cout << "\n\n" ;
+}
+void GameLoop() {
+	using namespace std ;
+	int counter{} ;
+	while(true) {
+		++counter ;
+		if(counter == 1) {
+			Fire() ;
+		}
+		if(counter >=1 && counter <= 5) {
+			Animate() ;
+		}
+		if(counter > 5) {
+			Explode() ; 
+			counter = 0 ;
+		} 
+		std::this_thread::sleep_for(1s) ;
+	}
+}
+
+int main() {
+	GameLoop() ;
+}
+
